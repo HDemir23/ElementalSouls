@@ -1,0 +1,36 @@
+# Dependencies
+/node_modules
+/Frontend/node_modules
+/Backend/node_modules
+/ElementalSouls/lib
+
+# Build artifacts
+/Backend/dist
+/Frontend/.next
+/ElementalSouls/out
+/ElementalSouls/cache
+/ElementalSouls/broadcast
+
+# Env files
+.env
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local settings
+.claude/
+
+# OS-specific
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated images
+/Backend/generated-images/
+
+# Foundry
+foundry.lock

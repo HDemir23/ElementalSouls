@@ -1,0 +1,36 @@
+{
+  "name": "Elemental Soul #4 - Air Whisper",
+  "description": "A swirling vortex of ethereal wind, barely visible. This airy essence floats in anticipation. Complete tasks to help it breeze into its next form.",
+  "image": "ipfs://bafybeidoluxp77kb75awwbvq5yt2xtpnorrn6rfbnbu64hqwep64xbfady",
+  "external_url": "https://elementalsouls.xyz/soul/4",
+  "background_color": "87CEEB",
+  "attributes": [
+    {
+      "trait_type": "Element",
+      "value": "Air"
+    },
+    {
+      "trait_type": "Level",
+      "value": 0,
+      "display_type": "number",
+      "max_value": 10
+    },
+    {
+      "trait_type": "Stage",
+      "value": "Whisper"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Power",
+      "value": 10,
+      "display_type": "boost_number"
+    },
+    {
+      "trait_type": "Generation",
+      "value": "Genesis"
+    }
+  ]
+}

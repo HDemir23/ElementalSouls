@@ -1,0 +1,11 @@
+import '@testing-library/jest-dom/vitest';
+
+process.env.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/';
+process.env.NEXT_PUBLIC_RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? 'https://rpc.test';
+process.env.NEXT_PUBLIC_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID ?? '20143';
+process.env.NEXT_PUBLIC_COLLECTION_ADDRESS =
+  process.env.NEXT_PUBLIC_COLLECTION_ADDRESS ?? '0x0000000000000000000000000000000000000000';
+process.env.NEXT_PUBLIC_GATEWAY_ADDRESS =
+  process.env.NEXT_PUBLIC_GATEWAY_ADDRESS ?? '0x0000000000000000000000000000000000000001';
+process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID =
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? 'test-project';

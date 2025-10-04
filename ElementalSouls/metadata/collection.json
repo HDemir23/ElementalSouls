@@ -1,0 +1,10 @@
+{
+  "name": "Elemental Souls",
+  "description": "Evolving NFT collection where each soul grows through completing tasks. Start with a base elemental egg (Fire, Water, Earth, Air) at Level 0, then evolve through 10 unique levels by burning your old NFT and claiming a newly generated evolved form. Each evolution is permanent and creates a unique AI-generated image.",
+  "image": "ipfs://COLLECTION_BANNER_CID",
+  "external_link": "https://elementalsouls.xyz",
+  "seller_fee_basis_points": 500,
+  "fee_recipient": "0xE9fE9341a4193732BC34B37ed58A1EB4144f717B",
+  "banner_image_url": "ipfs://COLLECTION_BANNER_CID",
+  "featured_image_url": "ipfs://COLLECTION_FEATURED_CID"
+}

@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: elemental-souls-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: <CHANGE_ME>
+      POSTGRES_DB: elemental_souls
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB
+  mongodb:
+    image: mongo:7-jammy
+    container_name: elemental-souls-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: elemental_souls
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: elemental-souls-api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://postgres:<CHANGE_ME>@postgres:5432/elemental_souls
+      MONGODB_URI: mongodb://mongodb:27017/elemental_souls
+      # Redis (used for job queues)
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JWT_SECRET: ${JWT_SECRET}
+      CONTRACT_ADDRESS: ${CONTRACT_ADDRESS}
+      MONAD_RPC_URL: ${MONAD_RPC_URL}
+      MONAD_CHAIN_ID: ${MONAD_CHAIN_ID}
+      SIGNER_PRIVATE_KEY: ${SIGNER_PRIVATE_KEY}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN}
+      NFT_STORAGE_API_KEY: ${NFT_STORAGE_API_KEY}
+      CORS_ORIGIN: http://localhost:3001
+      LOG_LEVEL: info
+      PRETTY_LOGS: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./dist:/app/dist
+    restart: unless-stopped
+
+  # Redis (for BullMQ job queues)
+  redis:
+    image: redis:7-alpine
+    container_name: elemental-souls-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:

@@ -1,0 +1,36 @@
+{
+  "name": "Elemental Soul #{{tokenId}} - Fire Egg",
+  "description": "A nascent fire soul, pulsing with inner heat. This elemental egg awaits its first awakening. Complete tasks to help it evolve into its next form.",
+  "image": "ipfs://bafybeigbcyli4bo6g2b6c3bwirpul5nobhiailfox2lkiepfzstaqrktfe",
+  "external_url": "https://elementalsouls.xyz/soul/{{tokenId}}",
+  "background_color": "FF4500",
+  "attributes": [
+    {
+      "trait_type": "Element",
+      "value": "Fire"
+    },
+    {
+      "trait_type": "Level",
+      "value": 0,
+      "display_type": "number",
+      "max_value": 10
+    },
+    {
+      "trait_type": "Stage",
+      "value": "Egg"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Power",
+      "value": 10,
+      "display_type": "boost_number"
+    },
+    {
+      "trait_type": "Generation",
+      "value": "Genesis"
+    }
+  ]
+}

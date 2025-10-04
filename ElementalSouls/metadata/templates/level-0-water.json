@@ -1,0 +1,36 @@
+{
+  "name": "Elemental Soul #{{tokenId}} - Water Droplet",
+  "description": "A pristine water droplet, shimmering with potential. This elemental essence awaits its awakening. Complete tasks to help it flow into its next form.",
+  "image": "ipfs://bafybeigwa4ee3rddizv2unijvwcbln7ygvtubl3brnuol3ijmutnujx7zm",
+  "external_url": "https://elementalsouls.xyz/soul/{{tokenId}}",
+  "background_color": "1E90FF",
+  "attributes": [
+    {
+      "trait_type": "Element",
+      "value": "Water"
+    },
+    {
+      "trait_type": "Level",
+      "value": 0,
+      "display_type": "number",
+      "max_value": 10
+    },
+    {
+      "trait_type": "Stage",
+      "value": "Droplet"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Power",
+      "value": 10,
+      "display_type": "boost_number"
+    },
+    {
+      "trait_type": "Generation",
+      "value": "Genesis"
+    }
+  ]
+}

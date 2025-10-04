@@ -1,0 +1,205 @@
+{
+  "contractName": "ElementalSouls",
+  "contractType": "ERC721 Soulbound Token (SBT) with Evolution Mechanics",
+  "description": "A non-transferable NFT contract representing elemental souls that can evolve through levels. Each soul is bound to its owner and can evolve through signed permits.",
+  
+  "contractDetails": {
+    "name": "Elemental Souls",
+    "symbol": "ESOUL",
+    "maxSupply": 10000,
+    "maxLevel": 10,
+    "elements": ["Fire", "Water", "Earth", "Air"],
+    "features": [
+      "Soulbound (non-transferable)",
+      "Evolution system with EIP-712 signatures",
+      "Role-based access control",
+      "Emergency pause functionality"
+    ]
+  },
+
+  "roles": {
+    "DEFAULT_ADMIN_ROLE": "Can pause/unpause contract and perform emergency transfers",
+    "ADMIN_ROLE": "Can update authorized signer",
+    "MINTER_ROLE": "Can mint new souls",
+    "SIGNER_ROLE": "Can authorize evolution permits"
+  },
+
+  "functions": {
+    "mint": {
+      "purpose": "Mint a new Elemental Soul to a user",
+      "parameters": [
+        {"name": "to", "type": "address", "description": "Recipient address (can only mint once per address)"},
+        {"name": "element", "type": "uint8", "description": "Element type (0=Fire, 1=Water, 2=Earth, 3=Air)"},
+        {"name": "uri", "type": "string", "description": "Metadata URI for the soul"}
+      ],
+      "access": "MINTER_ROLE only",
+      "returns": "uint256 tokenId",
+      "emits": "Minted event"
+    },
+
+    "evolve": {
+      "purpose": "Evolve a soul to the next level using a signed permit",
+      "parameters": [
+        {"name": "permit", "type": "EvolvePermit", "description": "Evolution permit containing evolution details"},
+        {"name": "signature", "type": "bytes", "description": "EIP-712 signature from authorized signer"}
+      ],
+      "access": "Token owner only",
+      "emits": "Evolved event, EvolutionMilestone event (for levels 5 and 10)"
+    },
+
+    "tokenURI": {
+      "purpose": "Get the metadata URI for a soul",
+      "parameters": [
+        {"name": "tokenId", "type": "uint256", "description": "ID of the soul"}
+      ],
+      "returns": "string URI",
+      "access": "Public view"
+    },
+
+    "updateSigner": {
+      "purpose": "Update the authorized signer address",
+      "parameters": [
+        {"name": "newSigner", "type": "address", "description": "New authorized signer address"}
+      ],
+      "access": "ADMIN_ROLE only",
+      "emits": "SignerUpdated event"
+    },
+
+    "togglePause": {
+      "purpose": "Pause or unpause the contract",
+      "parameters": [],
+      "access": "DEFAULT_ADMIN_ROLE only",
+      "emits": "EmergencyPause event"
+    },
+
+    "emergencyTransfer": {
+      "purpose": "Emergency transfer of a soul (requires proof)",
+      "parameters": [
+        {"name": "tokenId", "type": "uint256", "description": "ID of the soul to transfer"},
+        {"name": "newOwner", "type": "address", "description": "New owner address"},
+        {"name": "proof", "type": "bytes", "description": "Signed proof from old owner"}
+      ],
+      "access": "DEFAULT_ADMIN_ROLE only"
+    }
+  },
+
+  "viewFunctions": {
+    "tokenLevel": {"purpose": "Get current level of a soul", "returns": "uint8"},
+    "tokenElement": {"purpose": "Get element type of a soul", "returns": "uint8"},
+    "tokenNonce": {"purpose": "Get nonce for replay protection", "returns": "uint256"},
+    "lastEvolveTime": {"purpose": "Get timestamp of last evolution", "returns": "uint256"},
+    "totalEvolutions": {"purpose": "Get total evolution count", "returns": "uint256"},
+    "authorizedSigner": {"purpose": "Get current authorized signer address", "returns": "address"},
+    "userMintCount": {"purpose": "Check if user has minted", "returns": "uint256"},
+    "paused": {"purpose": "Check if contract is paused", "returns": "bool"},
+    "DOMAIN_SEPARATOR": {"purpose": "Get EIP-712 domain separator", "returns": "bytes32"}
+  },
+
+  "events": {
+    "Minted": {
+      "purpose": "Emitted when a new soul is minted",
+      "parameters": ["owner", "tokenId", "element", "uri"]
+    },
+    "Evolved": {
+      "purpose": "Emitted when a soul evolves",
+      "parameters": ["owner", "tokenId", "fromLevel", "toLevel", "newUri", "timestamp"]
+    },
+    "SignerUpdated": {
+      "purpose": "Emitted when authorized signer changes",
+      "parameters": ["oldSigner", "newSigner", "timestamp"]
+    },
+    "EmergencyPause": {
+      "purpose": "Emitted when contract pause state changes",
+      "parameters": ["paused", "admin"]
+    },
+    "EvolutionMilestone": {
+      "purpose": "Emitted when soul reaches milestone level",
+      "parameters": ["tokenId", "level", "milestone"]
+    }
+  },
+
+  "evolutionPermit": {
+    "structure": "EvolvePermit",
+    "fields": [
+      {"name": "owner", "type": "address", "description": "Owner of the soul"},
+      {"name": "tokenId", "type": "uint256", "description": "ID of the soul to evolve"},
+      {"name": "fromLevel", "type": "uint8", "description": "Current level"},
+      {"name": "toLevel", "type": "uint8", "description": "Target level (must be current + 1)"},
+      {"name": "deadline", "type": "uint256", "description": "Deadline for permit validity"},
+      {"name": "nonce", "type": "uint256", "description": "Nonce for replay protection"},
+      {"name": "newURI", "type": "string", "description": "New metadata URI after evolution"}
+    ]
+  },
+
+  "interactionExamples": {
+    "minting": {
+      "description": "Mint a new Fire soul",
+      "parameters": {
+        "to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb9",
+        "element": 0,
+        "uri": "ipfs://QmHashOfMetadata"
+      },
+      "expectedResult": "Returns tokenId (starting from 0)"
+    },
+
+    "evolution": {
+      "description": "Evolve a soul from level 0 to 1",
+      "steps": [
+        "Create EvolvePermit struct with correct parameters",
+        "Get EIP-712 signature from authorized signer",
+        "Call evolve function with permit and signature"
+      ],
+      "permitExample": {
+        "owner": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb9",
+        "tokenId": 0,
+        "fromLevel": 0,
+        "toLevel": 1,
+        "deadline": 1700000000,
+        "nonce": 0,
+        "newURI": "ipfs://QmHashOfEvolvedMetadata"
+      }
+    }
+  },
+
+  "securityFeatures": {
+    "soulbound": "All transfer functions are disabled - souls cannot be transferred",
+    "eip712": "Evolution requires signed permits from authorized signer",
+    "nonce": "Replay protection for evolution permits",
+    "deadline": "Permits expire after specified time",
+    "roleBasedAccess": "Different functions require different roles",
+    "pause": "Contract can be paused in emergencies",
+    "maxSupply": "Limited to 10,000 souls",
+    "onePerUser": "Each address can only mint one soul"
+  },
+
+  "deployment": {
+    "constructor": {
+      "parameters": [
+        {"name": "_initialSigner", "type": "address", "description": "Initial authorized signer address"}
+      ]
+    },
+    "initialRoles": {
+      "DEFAULT_ADMIN_ROLE": "Set to deployer",
+      "ADMIN_ROLE": "Set to deployer",
+      "MINTER_ROLE": "Set to deployer",
+      "SIGNER_ROLE": "Set to _initialSigner"
+    }
+  },
+
+  "errorMessages": {
+    "Max supply reached": "When trying to mint beyond 10,000 souls",
+    "Invalid element": "When element is not 0-3",
+    "Already minted": "When user tries to mint more than one soul",
+    "Invalid recipient": "When minting to zero address",
+    "Contract paused": "When contract is paused",
+    "Not token owner": "When non-owner tries to evolve",
+    "Owner mismatch": "When permit owner doesn't match token owner",
+    "Permit expired": "When deadline has passed",
+    "Invalid nonce": "When nonce doesn't match token nonce",
+    "Level mismatch": "When fromLevel doesn't match current level",
+    "Invalid level progression": "When toLevel is not current + 1",
+    "Max level exceeded": "When trying to evolve beyond level 10",
+    "Invalid signature": "When signature is not from authorized signer",
+    "SBT: transfers disabled": "When trying to transfer soulbound tokens"
+  }
+}

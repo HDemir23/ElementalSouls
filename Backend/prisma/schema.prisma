@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums (mapped to original SQL string values)
+enum TaskCategory {
+  SOCIAL   @map("social")
+  ONCHAIN  @map("onchain")
+  QUEST    @map("quest")
+}
+
+enum VerificationType {
+  MANUAL     @map("manual")
+  AUTO       @map("auto")
+  SIGNATURE  @map("signature")
+}
+
+enum CompletionStatus {
+  PENDING   @map("pending")
+  APPROVED  @map("approved")
+  REJECTED  @map("rejected")
+}
+
+// Users table
+model User {
+  id          Int      @id @default(autoincrement())
+  address     String   @unique @db.VarChar(42)
+  tokenId     Int?     @map("token_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  lastActive  DateTime @default(now()) @map("last_active")
+
+  taskCompletions TaskCompletion[] @relation("UserCompletions")
+
+  @@index([address], name: "idx_users_address")
+  @@map("users")
+}
+
+// Tasks table
+model Task {
+  id               String          @id @db.VarChar(50)
+  name             String          @db.VarChar(200)
+  description      String?         @db.Text
+  category         TaskCategory
+  requiredLevel    Int             @default(0) @map("required_level")
+  points           Int             @default(0)
+  verificationType VerificationType @map("verification_type")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  completions      TaskCompletion[] @relation("TaskCompletions")
+
+  @@index([requiredLevel], name: "idx_tasks_level")
+  @@index([isActive], name: "idx_tasks_active")
+  @@map("tasks")
+}
+
+// Task completions table
+model TaskCompletion {
+  id           Int              @id @default(autoincrement())
+  userAddress  String           @db.VarChar(42) @map("user_address")
+  taskId       String           @db.VarChar(50)  @map("task_id")
+  tokenId      Int              @map("token_id")
+  proof        Json?            @db.Json
+  status       CompletionStatus @default(PENDING)
+  completedAt  DateTime         @default(now()) @map("completed_at")
+  verifiedBy   String?          @db.VarChar(42) @map("verified_by")
+
+  user  User @relation("UserCompletions", fields: [userAddress], references: [address], onDelete: Cascade)
+  task  Task @relation("TaskCompletions", fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userAddress, taskId, tokenId], name: "uq_user_task_token")
+  @@index([userAddress], name: "idx_completions_user")
+  @@index([status], name: "idx_completions_status")
+  @@index([tokenId], name: "idx_completions_token")
+  @@map("task_completions")
+}
+
+// Evolution history table
+model EvolutionHistory {
+  id         Int      @id @default(autoincrement())
+  tokenId    Int      @map("token_id")
+  fromLevel  Int      @map("from_level")
+  toLevel    Int      @map("to_level")
+  metadataUri String  @map("metadata_uri") @db.Text
+  imageUri   String   @map("image_uri") @db.Text
+  txHash     String?  @map("tx_hash") @db.VarChar(66)
+  evolvedAt  DateTime @default(now()) @map("evolved_at")
+
+  @@index([tokenId], name: "idx_evolution_token")
+  @@index([evolvedAt], name: "idx_evolution_date")
+  @@map("evolution_history")
+}
+
+// Pending signatures table
+model PendingSignature {
+  id          String   @id @default(uuid()) @db.Uuid
+  userAddress String   @db.VarChar(42) @map("user_address")
+  tokenId     Int      @map("token_id")
+  permitHash  String   @db.VarChar(66) @map("permit_hash")
+  signature   String   @db.Text
+  deadline    BigInt   @map("deadline") @db.BigInt
+  isUsed      Boolean  @default(false) @map("is_used")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([isUsed], name: "idx_pending_sigs_unused")
+  @@index([deadline], name: "idx_pending_sigs_deadline")
+  @@map("pending_signatures")
+}
+
+// NFT cache table
+model NftCache {
+  tokenId     Int      @id @map("token_id")
+  owner       String   @db.VarChar(42)
+  element     Int
+  level       Int
+  nonce       Int
+  metadataUri String?  @map("metadata_uri") @db.Text
+  lastUpdated DateTime @default(now()) @map("last_updated")
+
+  @@index([owner], name: "idx_nft_owner")
+  @@index([level], name: "idx_nft_level")
+  @@map("nft_cache")
+}
+
+// Note: The DB trigger/function (update_last_active) is not represented in Prisma schema.
+// Add a raw SQL migration to recreate the trigger/function when migrating from the current SQL schema.

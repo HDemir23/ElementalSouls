@@ -1,0 +1,23 @@
+{
+  "name": "@elementalsouls/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "viem": "^2.9.15",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "typescript": "^5.4.5",
+    "vitest": "^1.5.0",
+    "prettier": "^3.2.5"
+  }
+}

@@ -1,0 +1,1939 @@
+════════════════════════════════════════════════════════════════════════════════
+  ELEMENTAL SOULS - MONAD HACKATHON PROJECT SPECIFICATION
+  Version: 2.0 (Revised & Scalable)
+  Last Updated: 2025-10-04
+════════════════════════════════════════════════════════════════════════════════
+
+TABLE OF CONTENTS
+─────────────────
+1. Project Overview
+2. Smart Contract Specification (Revised)
+3. Backend Architecture
+4. Frontend Architecture
+5. AI Image Generation Pipeline
+6. Task System & Gamification
+7. Scalability Considerations
+8. Security Requirements
+9. Deployment Strategy
+10. Timeline & Milestones
+
+════════════════════════════════════════════════════════════════════════════════
+1. PROJECT OVERVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+NAME: Elemental Souls
+TAGLINE: "Evolve Your Spirit Through Action"
+
+CONCEPT:
+A gamified Soulbound NFT system where users mint elemental companions (Fire,
+Water, Earth, Air) that evolve through completing real-world and on-chain tasks.
+Each evolution generates a UNIQUE AI-generated image while maintaining the
+core elemental identity.
+
+CORE MECHANICS:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Mint (Lvl 0) → Task Completion → Evolve (Lvl 1) → Tasks → Evolve (Lvl 2)│
+│     ↓                                  ↓                        ↓        │
+│  Egg Form                          Baby Form               Adult Form    │
+│  (Generic)                      (AI-Generated)          (AI-Generated)   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+KEY FEATURES:
+✓ Soulbound (non-transferable) to prevent mercenary behavior
+✓ Progressive evolution system (10 levels planned)
+✓ AI-generated unique artwork per evolution
+✓ Task-gated progression (prevents pay-to-win)
+✓ EIP-712 signature authorization for gas-free task validation
+✓ Element-based rarity and trait system
+
+TARGET METRICS:
+- 10,000 initial mints
+- 50+ tasks across 10 levels
+- Average 3-5 days per evolution
+- 90-day complete journey (lvl 0 → lvl 10)
+
+════════════════════════════════════════════════════════════════════════════════
+2. SMART CONTRACT SPECIFICATION (REVISED)
+════════════════════════════════════════════════════════════════════════════════
+
+CONTRACT NAME: ElementalSouls
+STANDARD: ERC-721 (Modified Soulbound)
+COMPILER: Solidity ^0.8.24
+DEPENDENCIES: OpenZeppelin v5.x (ERC721, AccessControl, ReentrancyGuard, ECDSA)
+
+─────────────────────────────────────────────────────────────────────────────────
+2.1 TOKEN METADATA
+─────────────────────────────────────────────────────────────────────────────────
+
+NAME: "Elemental Souls"
+SYMBOL: "ESOUL"
+MAX SUPPLY: 10,000 (configurable via constant)
+
+ELEMENT TYPES (uint8):
+┌───────┬──────────┬─────────────┬──────────────────┐
+│ Value │ Name     │ Color Theme │ Rarity Weight    │
+├───────┼──────────┼─────────────┼──────────────────┤
+│   0   │ Fire     │ Red/Orange  │ 25% (common)     │
+│   1   │ Water    │ Blue/Cyan   │ 25% (common)     │
+│   2   │ Earth    │ Green/Brown │ 25% (common)     │
+│   3   │ Air      │ White/Gray  │ 25% (common)     │
+└───────┴──────────┴─────────────┴──────────────────┘
+
+FUTURE EXTENSIONS (Post-Hackathon):
+- Element 4: Light (10% rare)
+- Element 5: Shadow (10% rare)
+- Element 6: Aether (5% mythic)
+
+LEVEL PROGRESSION:
+┌───────┬──────────────┬─────────────────┬──────────────────────────────┐
+│ Level │ Form Name    │ Tasks Required  │ Estimated Time               │
+├───────┼──────────────┼─────────────────┼──────────────────────────────┤
+│   0   │ Egg          │ 0 (mint)        │ Instant                      │
+│   1   │ Hatchling    │ 3 tasks         │ 1-2 days                     │
+│   2   │ Juvenile     │ 5 tasks         │ 2-3 days                     │
+│   3   │ Adolescent   │ 7 tasks         │ 3-5 days                     │
+│   4   │ Young Adult  │ 10 tasks        │ 5-7 days                     │
+│   5   │ Mature       │ 12 tasks        │ 7-10 days                    │
+│   6   │ Veteran      │ 15 tasks        │ 10-14 days                   │
+│   7   │ Elder        │ 18 tasks        │ 14-21 days                   │
+│   8   │ Ancient      │ 22 tasks        │ 21-30 days                   │
+│   9   │ Mythic       │ 25 tasks        │ 30-45 days                   │
+│  10   │ Transcendent │ 30 tasks        │ 45-60 days (final form)      │
+└───────┴──────────────┴─────────────────┴──────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────────
+2.2 ROLE-BASED ACCESS CONTROL
+─────────────────────────────────────────────────────────────────────────────────
+
+ROLES (bytes32 via AccessControl):
+
+1. DEFAULT_ADMIN_ROLE (0x00)
+   - Deployer wallet (multi-sig recommended for mainnet)
+   - Can grant/revoke all roles
+   - Emergency pause/unpause
+   - Update global config (max supply, max level)
+
+2. MINTER_ROLE = keccak256("MINTER_ROLE")
+   - Public mint function (anyone can call)
+   - Backend service for sponsored mints
+   - Rate limiting: max 1 mint per address (configurable)
+
+3. SIGNER_ROLE = keccak256("SIGNER_ROLE")
+   - Backend service that validates tasks
+   - Signs EIP-712 evolution permits
+   - Can be rotated via ADMIN_ROLE
+
+4. ADMIN_ROLE = keccak256("ADMIN_ROLE")
+   - Update signer address
+   - Update base URI patterns
+   - Manage emergency functions
+
+─────────────────────────────────────────────────────────────────────────────────
+2.3 STATE VARIABLES
+─────────────────────────────────────────────────────────────────────────────────
+
+// Core NFT data
+uint256 private _tokenIdCounter;                    // Auto-increment counter
+uint256 public constant MAX_SUPPLY = 10000;         // Hard cap
+uint256 public constant MAX_LEVEL = 10;             // Progression cap
+mapping(uint256 => uint8) public tokenLevel;        // tokenId => current level
+mapping(uint256 => uint8) public tokenElement;      // tokenId => element (immutable)
+mapping(uint256 => uint256) public tokenNonce;      // tokenId => replay protection
+mapping(uint256 => string) private _tokenURIs;      // tokenId => IPFS metadata URI
+
+// Evolution tracking
+mapping(uint256 => uint256) public lastEvolveTime;  // tokenId => timestamp
+mapping(uint256 => uint256) public totalEvolutions; // tokenId => evolution count
+
+// Signer management
+address public authorizedSigner;                    // EIP-712 signature validator
+mapping(address => uint256) public userMintCount;   // Anti-spam: 1 mint per address
+
+// Pausing (emergency)
+bool public paused;
+
+─────────────────────────────────────────────────────────────────────────────────
+2.4 EVENTS
+─────────────────────────────────────────────────────────────────────────────────
+
+event Minted(
+    address indexed owner,
+    uint256 indexed tokenId,
+    uint8 element,
+    string uri
+);
+
+event Evolved(
+    address indexed owner,
+    uint256 indexed tokenId,
+    uint8 fromLevel,
+    uint8 toLevel,
+    string newUri,
+    uint256 timestamp
+);
+
+event SignerUpdated(
+    address indexed oldSigner,
+    address indexed newSigner,
+    uint256 timestamp
+);
+
+event EmergencyPause(bool paused, address admin);
+
+// Analytics events (for frontend/indexer)
+event EvolutionMilestone(
+    uint256 indexed tokenId,
+    uint8 level,
+    string milestone  // e.g., "FIRST_ADULT", "MAX_LEVEL"
+);
+
+─────────────────────────────────────────────────────────────────────────────────
+2.5 CONSTRUCTOR
+─────────────────────────────────────────────────────────────────────────────────
+
+constructor(address _initialSigner) ERC721("Elemental Souls", "ESOUL") {
+    require(_initialSigner != address(0), "Invalid signer");
+
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _grantRole(ADMIN_ROLE, msg.sender);
+    _grantRole(MINTER_ROLE, msg.sender);
+    _grantRole(SIGNER_ROLE, _initialSigner);
+
+    authorizedSigner = _initialSigner;
+    paused = false;
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+2.6 CORE FUNCTIONS
+─────────────────────────────────────────────────────────────────────────────────
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ FUNCTION: mint                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+function mint(
+    address to,
+    uint8 element,
+    string calldata uri
+) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
+
+    // Validations
+    require(_tokenIdCounter < MAX_SUPPLY, "Max supply reached");
+    require(element <= 3, "Invalid element");  // 0-3 for base elements
+    require(userMintCount[to] == 0, "Already minted");
+    require(to != address(0), "Invalid recipient");
+
+    uint256 tokenId = _tokenIdCounter++;
+
+    _safeMint(to, tokenId);
+
+    tokenElement[tokenId] = element;
+    tokenLevel[tokenId] = 0;
+    tokenNonce[tokenId] = 0;
+    _tokenURIs[tokenId] = uri;
+    lastEvolveTime[tokenId] = block.timestamp;
+    userMintCount[to] = 1;
+
+    emit Minted(to, tokenId, element, uri);
+
+    return tokenId;
+}
+
+RATIONALE:
+- One mint per address prevents Sybil farming
+- MINTER_ROLE allows flexible access (public mint or sponsored)
+- URI passed at mint allows pre-generated egg metadata
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ FUNCTION: evolve (EIP-712 Signature-Gated)                               ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+struct EvolvePermit {
+    address owner;
+    uint256 tokenId;
+    uint8 fromLevel;
+    uint8 toLevel;
+    uint256 deadline;
+    uint256 nonce;
+    string newURI;
+}
+
+function evolve(
+    EvolvePermit calldata permit,
+    bytes calldata signature
+) external nonReentrant whenNotPaused {
+
+    // Ownership validation
+    address tokenOwner = ownerOf(permit.tokenId);
+    require(msg.sender == tokenOwner, "Not token owner");
+    require(permit.owner == tokenOwner, "Owner mismatch");
+
+    // Temporal validation
+    require(block.timestamp <= permit.deadline, "Permit expired");
+
+    // Nonce validation (replay protection)
+    require(permit.nonce == tokenNonce[permit.tokenId], "Invalid nonce");
+
+    // Level validation
+    uint8 currentLevel = tokenLevel[permit.tokenId];
+    require(permit.fromLevel == currentLevel, "Level mismatch");
+    require(permit.toLevel == currentLevel + 1, "Invalid level progression");
+    require(permit.toLevel <= MAX_LEVEL, "Max level exceeded");
+
+    // EIP-712 signature validation
+    bytes32 structHash = keccak256(abi.encode(
+        keccak256("EvolvePermit(address owner,uint256 tokenId,uint8 fromLevel,uint8 toLevel,uint256 deadline,uint256 nonce,string newURI)"),
+        permit.owner,
+        permit.tokenId,
+        permit.fromLevel,
+        permit.toLevel,
+        permit.deadline,
+        permit.nonce,
+        keccak256(bytes(permit.newURI))
+    ));
+
+    bytes32 digest = _hashTypedDataV4(structHash);
+    address recoveredSigner = ECDSA.recover(digest, signature);
+
+    require(recoveredSigner == authorizedSigner, "Invalid signature");
+
+    // Apply evolution
+    tokenNonce[permit.tokenId]++;
+    tokenLevel[permit.tokenId] = permit.toLevel;
+    _tokenURIs[permit.tokenId] = permit.newURI;
+    lastEvolveTime[permit.tokenId] = block.timestamp;
+    totalEvolutions[permit.tokenId]++;
+
+    emit Evolved(
+        permit.owner,
+        permit.tokenId,
+        permit.fromLevel,
+        permit.toLevel,
+        permit.newURI,
+        block.timestamp
+    );
+
+    // Milestone tracking
+    if (permit.toLevel == 5) {
+        emit EvolutionMilestone(permit.tokenId, permit.toLevel, "MATURE_FORM");
+    } else if (permit.toLevel == MAX_LEVEL) {
+        emit EvolutionMilestone(permit.tokenId, permit.toLevel, "TRANSCENDENT");
+    }
+}
+
+SECURITY FEATURES:
+✓ Nonce prevents replay attacks
+✓ Deadline prevents stale signatures
+✓ Level progression enforced (+1 only)
+✓ Owner verification (msg.sender + permit.owner)
+✓ ReentrancyGuard on external calls
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ FUNCTION: tokenURI (Metadata Override)                                   ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+function tokenURI(uint256 tokenId)
+    public
+    view
+    virtual
+    override
+    returns (string memory)
+{
+    _requireOwned(tokenId);  // OZ v5 pattern
+    return _tokenURIs[tokenId];
+}
+
+METADATA STRUCTURE (JSON stored on IPFS):
+{
+  "name": "Fire Soul #1234 - Hatchling",
+  "description": "A young fire elemental awakening from its egg",
+  "image": "ipfs://QmXXX.../fire_hatchling_1234.png",
+  "attributes": [
+    {"trait_type": "Element", "value": "Fire"},
+    {"trait_type": "Level", "value": 1},
+    {"trait_type": "Form", "value": "Hatchling"},
+    {"trait_type": "Generation", "value": "AI-Generated"},
+    {"trait_type": "Evolution Count", "value": 1},
+    {"trait_type": "Birth Date", "value": 1728000000}
+  ]
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ SOULBOUND ENFORCEMENT (Transfer Locks)                                   ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+Override all transfer functions to revert:
+
+function approve(address, uint256) public virtual override {
+    revert("SBT: transfers disabled");
+}
+
+function setApprovalForAll(address, bool) public virtual override {
+    revert("SBT: transfers disabled");
+}
+
+function transferFrom(address, address, uint256) public virtual override {
+    revert("SBT: transfers disabled");
+}
+
+function safeTransferFrom(address, address, uint256, bytes memory)
+    public
+    virtual
+    override
+{
+    revert("SBT: transfers disabled");
+}
+
+EXCEPTION (Future Consideration):
+For account migration, add optional admin-approved transfer:
+
+function emergencyTransfer(
+    uint256 tokenId,
+    address newOwner,
+    bytes calldata proof
+) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    // Require signed proof from old owner + cooldown period
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ ADMIN FUNCTIONS                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+function updateSigner(address newSigner)
+    external
+    onlyRole(ADMIN_ROLE)
+{
+    require(newSigner != address(0), "Invalid signer");
+    address oldSigner = authorizedSigner;
+    authorizedSigner = newSigner;
+    emit SignerUpdated(oldSigner, newSigner, block.timestamp);
+}
+
+function togglePause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    paused = !paused;
+    emit EmergencyPause(paused, msg.sender);
+}
+
+modifier whenNotPaused() {
+    require(!paused, "Contract paused");
+    _;
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+2.7 EIP-712 DOMAIN CONFIGURATION
+─────────────────────────────────────────────────────────────────────────────────
+
+Using OpenZeppelin's EIP712 base contract:
+
+contract ElementalSouls is ERC721, AccessControl, ReentrancyGuard, EIP712 {
+
+    constructor(address _signer)
+        ERC721("Elemental Souls", "ESOUL")
+        EIP712("ElementalSoulsEvolver", "1")
+    {
+        // ... constructor logic
+    }
+}
+
+DOMAIN SEPARATOR:
+{
+    name: "ElementalSoulsEvolver",
+    version: "1",
+    chainId: <Monad Chain ID>,
+    verifyingContract: <deployed contract address>
+}
+
+TYPE HASH:
+keccak256("EvolvePermit(address owner,uint256 tokenId,uint8 fromLevel,uint8 toLevel,uint256 deadline,uint256 nonce,string newURI)")
+
+════════════════════════════════════════════════════════════════════════════════
+3. BACKEND ARCHITECTURE
+════════════════════════════════════════════════════════════════════════════════
+
+STACK:
+- Runtime: Node.js 20+ (TypeScript)
+- Framework: Fastify (30% faster than Express)
+- Database: PostgreSQL 16 + Redis (caching)
+- Queue: BullMQ (task processing)
+- Web3: viem v2 (EIP-712 signing)
+- Storage: NFT.Storage SDK (IPFS pinning)
+- AI: Replicate API (Flux-1-Schnell for speed)
+
+─────────────────────────────────────────────────────────────────────────────────
+3.1 SYSTEM ARCHITECTURE
+─────────────────────────────────────────────────────────────────────────────────
+
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│  Frontend   │─────▶│  API Gateway │─────▶│  Database   │
+│  (Next.js)  │      │  (Fastify)   │      │ (Postgres)  │
+└─────────────┘      └──────┬───────┘      └─────────────┘
+                            │
+                    ┌───────┴────────┐
+                    ▼                ▼
+            ┌───────────────┐  ┌─────────────┐
+            │ Task Verifier │  │   Signer    │
+            │   Service     │  │   Service   │
+            └───────┬───────┘  └──────┬──────┘
+                    │                 │
+                    ▼                 ▼
+            ┌───────────────┐  ┌─────────────┐
+            │   AI Image    │  │ IPFS Upload │
+            │  Generator    │  │   Service   │
+            └───────────────┘  └─────────────┘
+
+─────────────────────────────────────────────────────────────────────────────────
+3.2 DATABASE SCHEMA
+─────────────────────────────────────────────────────────────────────────────────
+
+TABLE: users
+┌─────────────┬──────────────┬─────────────────────────────────────┐
+│ Column      │ Type         │ Description                         │
+├─────────────┼──────────────┼─────────────────────────────────────┤
+│ id          │ SERIAL PK    │ Auto-increment ID                   │
+│ address     │ VARCHAR(42)  │ Ethereum address (UNIQUE)           │
+│ token_id    │ INTEGER      │ Owned NFT token ID (nullable)       │
+│ created_at  │ TIMESTAMP    │ Registration time                   │
+│ last_active │ TIMESTAMP    │ Last interaction                    │
+└─────────────┴──────────────┴─────────────────────────────────────┘
+
+TABLE: tasks
+┌──────────────────┬──────────────┬──────────────────────────────────┐
+│ Column           │ Type         │ Description                      │
+├──────────────────┼──────────────┼──────────────────────────────────┤
+│ id               │ VARCHAR(50)  │ Unique task ID (PK)              │
+│ name             │ VARCHAR(200) │ Display name                     │
+│ description      │ TEXT         │ Task instructions                │
+│ category         │ VARCHAR(50)  │ social/onchain/quest             │
+│ required_level   │ SMALLINT     │ Min NFT level to unlock          │
+│ points           │ INTEGER      │ Reward points                    │
+│ verification_type│ VARCHAR(50)  │ manual/auto/signature            │
+│ is_active        │ BOOLEAN      │ Enable/disable task              │
+│ created_at       │ TIMESTAMP    │                                  │
+└──────────────────┴──────────────┴──────────────────────────────────┘
+
+TABLE: task_completions
+┌──────────────┬──────────────┬────────────────────────────────────┐
+│ Column       │ Type         │ Description                        │
+├──────────────┼──────────────┼────────────────────────────────────┤
+│ id           │ SERIAL PK    │                                    │
+│ user_address │ VARCHAR(42)  │ FK to users.address                │
+│ task_id      │ VARCHAR(50)  │ FK to tasks.id                     │
+│ token_id     │ INTEGER      │ NFT used for completion            │
+│ proof        │ JSONB        │ Screenshot/tx hash/etc             │
+│ status       │ VARCHAR(20)  │ pending/approved/rejected          │
+│ completed_at │ TIMESTAMP    │                                    │
+│ verified_by  │ VARCHAR(42)  │ Admin address (for manual)         │
+└──────────────┴──────────────┴────────────────────────────────────┘
+
+TABLE: evolution_history
+┌──────────────┬──────────────┬────────────────────────────────────┐
+│ Column       │ Type         │ Description                        │
+├──────────────┼──────────────┼────────────────────────────────────┤
+│ id           │ SERIAL PK    │                                    │
+│ token_id     │ INTEGER      │ NFT token ID                       │
+│ from_level   │ SMALLINT     │ Previous level                     │
+│ to_level     │ SMALLINT     │ New level                          │
+│ metadata_uri │ TEXT         │ IPFS URI for new metadata          │
+│ image_uri    │ TEXT         │ IPFS URI for AI image              │
+│ tx_hash      │ VARCHAR(66)  │ Blockchain tx hash                 │
+│ evolved_at   │ TIMESTAMP    │                                    │
+└──────────────┴──────────────┴────────────────────────────────────┘
+
+TABLE: pending_signatures
+┌──────────────┬──────────────┬────────────────────────────────────┐
+│ Column       │ Type         │ Description                        │
+├──────────────┼──────────────┼────────────────────────────────────┤
+│ id           │ UUID PK      │                                    │
+│ user_address │ VARCHAR(42)  │                                    │
+│ token_id     │ INTEGER      │                                    │
+│ permit_hash  │ VARCHAR(66)  │ Hash of EvolvePermit struct        │
+│ signature    │ TEXT         │ EIP-712 signature (hex)            │
+│ deadline     │ BIGINT       │ Unix timestamp                     │
+│ is_used      │ BOOLEAN      │ Prevent reuse                      │
+│ created_at   │ TIMESTAMP    │                                    │
+└──────────────┴──────────────┴────────────────────────────────────┘
+
+INDEXES:
+CREATE INDEX idx_users_address ON users(address);
+CREATE INDEX idx_task_completions_status ON task_completions(status);
+CREATE INDEX idx_pending_sigs_unused ON pending_signatures(is_used) WHERE is_used = false;
+
+─────────────────────────────────────────────────────────────────────────────────
+3.3 API ENDPOINTS
+─────────────────────────────────────────────────────────────────────────────────
+
+BASE URL: https://api.elementalsouls.xyz
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ AUTH: All endpoints require JWT or SIWE (Sign-In With Ethereum)          ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+POST /auth/login
+Request:
+{
+  "message": "Sign in to Elemental Souls\nNonce: abc123",
+  "signature": "0x..."
+}
+Response:
+{
+  "token": "eyJhbGc...",
+  "user": {
+    "address": "0x1234...",
+    "tokenId": 42,
+    "level": 3
+  }
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ USER ENDPOINTS                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+GET /user/profile
+Response:
+{
+  "address": "0x1234...",
+  "tokenId": 42,
+  "element": 0,
+  "level": 3,
+  "totalEvolutions": 3,
+  "completedTasks": 15,
+  "availableTasks": 7,
+  "nextLevelRequirements": {
+    "tasksNeeded": 10,
+    "tasksCompleted": 15
+  }
+}
+
+GET /user/nft/:tokenId
+Response:
+{
+  "tokenId": 42,
+  "owner": "0x1234...",
+  "element": "Fire",
+  "level": 3,
+  "currentForm": "Adolescent",
+  "metadata": {
+    "name": "Fire Soul #42 - Adolescent",
+    "image": "ipfs://Qm...",
+    "attributes": [...]
+  },
+  "evolutionHistory": [
+    {
+      "level": 1,
+      "timestamp": "2025-10-01T12:00:00Z",
+      "image": "ipfs://..."
+    },
+    ...
+  ]
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ TASK ENDPOINTS                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+GET /tasks/available?level=3
+Response:
+{
+  "tasks": [
+    {
+      "id": "follow-twitter",
+      "name": "Follow @ElementalSouls on Twitter",
+      "description": "Follow our official Twitter account",
+      "category": "social",
+      "requiredLevel": 0,
+      "points": 10,
+      "verificationType": "manual",
+      "isCompleted": false
+    },
+    {
+      "id": "swap-tokens",
+      "name": "Make a swap on MonadSwap",
+      "description": "Perform any token swap on MonadSwap DEX",
+      "category": "onchain",
+      "requiredLevel": 2,
+      "points": 50,
+      "verificationType": "auto",
+      "isCompleted": true
+    }
+  ]
+}
+
+POST /tasks/submit
+Request:
+{
+  "taskId": "follow-twitter",
+  "tokenId": 42,
+  "proof": {
+    "type": "screenshot",
+    "url": "https://imgur.com/...",  // or base64
+    "handle": "@myusername"
+  }
+}
+Response:
+{
+  "status": "pending",
+  "message": "Task submitted for review",
+  "estimatedReviewTime": "1-24 hours"
+}
+
+POST /tasks/verify (Admin Only)
+Request:
+{
+  "completionId": 123,
+  "approved": true,
+  "adminNote": "Verified"
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ EVOLUTION ENDPOINTS                                                       ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+POST /evolution/check-eligibility
+Request:
+{
+  "tokenId": 42
+}
+Response:
+{
+  "eligible": true,
+  "currentLevel": 3,
+  "nextLevel": 4,
+  "requirements": {
+    "totalTasksNeeded": 10,
+    "completedTasks": 12,
+    "missingTasks": []
+  }
+}
+
+POST /evolution/request
+Request:
+{
+  "tokenId": 42,
+  "targetLevel": 4
+}
+Response (Success):
+{
+  "jobId": "uuid-1234",
+  "status": "processing",
+  "estimatedTime": "60-120 seconds",
+  "message": "AI is generating your new form..."
+}
+
+Response (Error):
+{
+  "error": "INSUFFICIENT_TASKS",
+  "message": "You need 2 more tasks to evolve",
+  "missingTasks": ["task-id-1", "task-id-2"]
+}
+
+GET /evolution/status/:jobId
+Response (Processing):
+{
+  "status": "processing",
+  "progress": 45,
+  "stage": "ai_generation"  // stages: validation → ai_generation → ipfs_upload → signing → ready
+}
+
+Response (Complete):
+{
+  "status": "ready",
+  "permitSignature": {
+    "permit": {
+      "owner": "0x1234...",
+      "tokenId": 42,
+      "fromLevel": 3,
+      "toLevel": 4,
+      "deadline": 1728086400,
+      "nonce": 3,
+      "newURI": "ipfs://Qm..."
+    },
+    "signature": "0xabcd..."
+  },
+  "preview": {
+    "imageUrl": "ipfs://Qm.../preview.png",
+    "metadata": {...}
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+3.4 SIGNATURE SERVICE (EIP-712 Signer)
+─────────────────────────────────────────────────────────────────────────────────
+
+FILE: backend/src/services/signer.service.ts
+
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { monadTestnet } from './chains';
+
+const DOMAIN = {
+  name: 'ElementalSoulsEvolver',
+  version: '1',
+  chainId: monadTestnet.id,
+  verifyingContract: process.env.CONTRACT_ADDRESS as `0x${string}`,
+};
+
+const TYPES = {
+  EvolvePermit: [
+    { name: 'owner', type: 'address' },
+    { name: 'tokenId', type: 'uint256' },
+    { name: 'fromLevel', type: 'uint8' },
+    { name: 'toLevel', type: 'uint8' },
+    { name: 'deadline', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'newURI', type: 'string' },
+  ],
+};
+
+export class SignerService {
+  private account;
+  private walletClient;
+
+  constructor() {
+    this.account = privateKeyToAccount(
+      process.env.SIGNER_PRIVATE_KEY as `0x${string}`
+    );
+    this.walletClient = createWalletClient({
+      account: this.account,
+      chain: monadTestnet,
+      transport: http(),
+    });
+  }
+
+  async signEvolvePermit(permit: EvolvePermit): Promise<`0x${string}`> {
+    const signature = await this.walletClient.signTypedData({
+      domain: DOMAIN,
+      types: TYPES,
+      primaryType: 'EvolvePermit',
+      message: permit,
+    });
+
+    return signature;
+  }
+
+  async verifySignature(
+    permit: EvolvePermit,
+    signature: `0x${string}`
+  ): Promise<boolean> {
+    const recovered = await verifyTypedData({
+      domain: DOMAIN,
+      types: TYPES,
+      primaryType: 'EvolvePermit',
+      message: permit,
+      signature,
+    });
+    return recovered === this.account.address;
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+3.5 TASK VERIFICATION SERVICE
+─────────────────────────────────────────────────────────────────────────────────
+
+TASK CATEGORIES & VERIFICATION METHODS:
+
+1. SOCIAL TASKS (Manual Verification)
+   ├─ Follow Twitter → Screenshot + API verification (optional)
+   ├─ Join Discord → Discord OAuth verification
+   ├─ Retweet/Like → Twitter API scraping
+   └─ Referral → On-chain tracking via custom link
+
+2. ON-CHAIN TASKS (Auto Verification)
+   ├─ Swap on DEX → Monitor swap events via RPC
+   ├─ Bridge assets → Monitor bridge contract events
+   ├─ Stake tokens → Check staking contract balance
+   └─ NFT interactions → Track NFT transfer events
+
+3. QUEST TASKS (Hybrid)
+   ├─ Complete tutorial → Frontend state + backend confirmation
+   ├─ Daily login → Session tracking (7-day streak)
+   └─ Community vote → Snapshot.org integration
+
+EXAMPLE: Auto-Verification for DEX Swap
+
+FILE: backend/src/verifiers/onchain.verifier.ts
+
+import { createPublicClient, http, parseAbiItem } from 'viem';
+
+export class OnChainVerifier {
+  private publicClient;
+
+  constructor() {
+    this.publicClient = createPublicClient({
+      chain: monadTestnet,
+      transport: http(process.env.MONAD_RPC_URL),
+    });
+  }
+
+  async verifyDEXSwap(userAddress: `0x${string}`): Promise<boolean> {
+    const swapEvent = parseAbiItem(
+      'event Swap(address indexed sender, uint amount0In, uint amount1In, uint amount0Out, uint amount1Out)'
+    );
+
+    const logs = await this.publicClient.getLogs({
+      address: DEX_CONTRACT_ADDRESS,
+      event: swapEvent,
+      args: {
+        sender: userAddress,
+      },
+      fromBlock: 'earliest',
+      toBlock: 'latest',
+    });
+
+    return logs.length > 0;
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+3.6 RATE LIMITING & SECURITY
+─────────────────────────────────────────────────────────────────────────────────
+
+RATE LIMITS (using @fastify/rate-limit):
+
+┌──────────────────────┬──────────┬─────────────────────────┐
+│ Endpoint             │ Limit    │ Window                  │
+├──────────────────────┼──────────┼─────────────────────────┤
+│ POST /auth/login     │ 5/min    │ Per IP                  │
+│ POST /tasks/submit   │ 10/hour  │ Per user                │
+│ POST /evolution/*    │ 3/day    │ Per tokenId             │
+│ GET endpoints        │ 100/min  │ Per user                │
+└──────────────────────┴──────────┴─────────────────────────┘
+
+SECURITY MEASURES:
+✓ Helmet.js for HTTP headers
+✓ CORS whitelist (frontend domain only)
+✓ Input validation (Zod schemas)
+✓ SQL injection prevention (Parameterized queries)
+✓ API key rotation (weekly)
+✓ Cloudflare DDoS protection
+✓ Signer private key in AWS Secrets Manager
+
+════════════════════════════════════════════════════════════════════════════════
+4. FRONTEND ARCHITECTURE
+════════════════════════════════════════════════════════════════════════════════
+
+STACK:
+- Framework: Next.js 14 (App Router)
+- Web3: wagmi v2 + viem
+- Wallet: RainbowKit (multi-wallet support)
+- UI: TailwindCSS + shadcn/ui
+- State: Zustand (lightweight vs Redux)
+- Queries: TanStack Query (React Query)
+- Charts: Recharts (evolution stats)
+
+─────────────────────────────────────────────────────────────────────────────────
+4.1 PROJECT STRUCTURE
+─────────────────────────────────────────────────────────────────────────────────
+
+frontend/
+├── app/
+│   ├── layout.tsx                    # Root layout + Web3Provider
+│   ├── page.tsx                      # Landing page
+│   ├── mint/
+│   │   └── page.tsx                  # Mint interface
+│   ├── dashboard/
+│   │   └── page.tsx                  # User dashboard
+│   └── evolve/
+│       └── page.tsx                  # Evolution interface
+├── components/
+│   ├── nft/
+│   │   ├── NFTCard.tsx               # Display NFT with metadata
+│   │   ├── ElementSelector.tsx       # Choose Fire/Water/Earth/Air
+│   │   └── EvolutionPreview.tsx      # Before/after comparison
+│   ├── tasks/
+│   │   ├── TaskList.tsx              # Available tasks grid
+│   │   ├── TaskCard.tsx              # Individual task
+│   │   └── TaskSubmitModal.tsx       # Upload proof
+│   ├── ui/                           # shadcn/ui components
+│   └── Web3Provider.tsx              # wagmi + RainbowKit config
+├── hooks/
+│   ├── useContract.ts                # ElementalSouls contract hooks
+│   ├── useNFT.ts                     # Fetch NFT data
+│   ├── useTasks.ts                   # Task CRUD operations
+│   └── useEvolution.ts               # Evolution workflow
+├── lib/
+│   ├── contracts/
+│   │   ├── abi.ts                    # Contract ABI
+│   │   └── addresses.ts              # Deployed addresses
+│   └── api/
+│       └── client.ts                 # Axios instance for backend
+└── public/
+    └── elements/                      # Base element images (lvl 0)
+
+─────────────────────────────────────────────────────────────────────────────────
+4.2 KEY COMPONENTS
+─────────────────────────────────────────────────────────────────────────────────
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ COMPONENT: ElementSelector                                               ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+FILE: components/nft/ElementSelector.tsx
+
+'use client';
+import { useState } from 'react';
+import Image from 'next/image';
+
+const ELEMENTS = [
+  { id: 0, name: 'Fire', color: 'from-red-500 to-orange-500', icon: '🔥' },
+  { id: 1, name: 'Water', color: 'from-blue-500 to-cyan-500', icon: '💧' },
+  { id: 2, name: 'Earth', color: 'from-green-500 to-emerald-500', icon: '🌍' },
+  { id: 3, name: 'Air', color: 'from-gray-300 to-slate-400', icon: '💨' },
+];
+
+export function ElementSelector({
+  onSelect
+}: {
+  onSelect: (element: number) => void
+}) {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  return (
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {ELEMENTS.map((elem) => (
+        <button
+          key={elem.id}
+          onClick={() => {
+            setSelected(elem.id);
+            onSelect(elem.id);
+          }}
+          className={`
+            relative aspect-square rounded-xl p-6 transition-all
+            ${selected === elem.id ? 'ring-4 ring-white scale-105' : 'opacity-70'}
+            bg-gradient-to-br ${elem.color}
+            hover:scale-105 hover:opacity-100
+          `}
+        >
+          <div className="text-6xl">{elem.icon}</div>
+          <div className="mt-2 text-xl font-bold text-white">{elem.name}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ HOOK: useContract (wagmi Integration)                                    ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+FILE: hooks/useContract.ts
+
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { ELEMENTAL_SOULS_ABI } from '@/lib/contracts/abi';
+import { ELEMENTAL_SOULS_ADDRESS } from '@/lib/contracts/addresses';
+
+export function useElementalSouls() {
+  const { writeContractAsync } = useWriteContract();
+
+  // Read NFT level
+  const useTokenLevel = (tokenId: bigint) => {
+    return useReadContract({
+      address: ELEMENTAL_SOULS_ADDRESS,
+      abi: ELEMENTAL_SOULS_ABI,
+      functionName: 'tokenLevel',
+      args: [tokenId],
+    });
+  };
+
+  // Mint NFT
+  const mint = async (to: `0x${string}`, element: number, uri: string) => {
+    const hash = await writeContractAsync({
+      address: ELEMENTAL_SOULS_ADDRESS,
+      abi: ELEMENTAL_SOULS_ABI,
+      functionName: 'mint',
+      args: [to, element, uri],
+    });
+    return hash;
+  };
+
+  // Evolve NFT
+  const evolve = async (permit: EvolvePermit, signature: `0x${string}`) => {
+    const hash = await writeContractAsync({
+      address: ELEMENTAL_SOULS_ADDRESS,
+      abi: ELEMENTAL_SOULS_ABI,
+      functionName: 'evolve',
+      args: [permit, signature],
+    });
+    return hash;
+  };
+
+  return { useTokenLevel, mint, evolve };
+}
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ PAGE: Evolution Interface                                                ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+FILE: app/evolve/page.tsx
+
+'use client';
+import { useState } from 'react';
+import { useAccount } from 'wagmi';
+import { useEvolution } from '@/hooks/useEvolution';
+import { EvolutionPreview } from '@/components/nft/EvolutionPreview';
+
+export default function EvolvePage() {
+  const { address } = useAccount();
+  const { checkEligibility, requestEvolution, confirmEvolution } = useEvolution();
+  const [step, setStep] = useState<'check' | 'generate' | 'confirm'>('check');
+
+  const handleEvolve = async () => {
+    // Step 1: Check eligibility
+    const eligible = await checkEligibility(tokenId);
+    if (!eligible.canEvolve) {
+      toast.error(`Need ${eligible.missingTasks} more tasks`);
+      return;
+    }
+
+    setStep('generate');
+
+    // Step 2: Request AI generation + signature
+    const job = await requestEvolution(tokenId);
+
+    // Poll for completion
+    const result = await pollEvolutionStatus(job.jobId);
+
+    setStep('confirm');
+
+    // Step 3: Show preview + confirm on-chain
+    // User clicks "Evolve" button
+  };
+
+  return (
+    <div className="container mx-auto py-12">
+      {step === 'check' && <EligibilityCheck onEvolve={handleEvolve} />}
+      {step === 'generate' && <LoadingAnimation message="AI is forging your new form..." />}
+      {step === 'confirm' && <EvolutionPreview onConfirm={confirmEvolution} />}
+    </div>
+  );
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+4.3 WEB3 CONFIGURATION
+─────────────────────────────────────────────────────────────────────────────────
+
+FILE: components/Web3Provider.tsx
+
+'use client';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { monadTestnet } from 'wagmi/chains';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit';
+
+const config = getDefaultConfig({
+  appName: 'Elemental Souls',
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_ID!,
+  chains: [monadTestnet],
+  transports: {
+    [monadTestnet.id]: http(process.env.NEXT_PUBLIC_MONAD_RPC),
+  },
+});
+
+const queryClient = new QueryClient();
+
+export function Web3Provider({ children }: { children: React.ReactNode }) {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>{children}</RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+════════════════════════════════════════════════════════════════════════════════
+5. AI IMAGE GENERATION PIPELINE
+════════════════════════════════════════════════════════════════════════════════
+
+GOAL: Generate unique, consistent, element-themed NFT images for each evolution
+
+CONSTRAINTS:
+✓ Must maintain element theme (Fire = red/orange, Water = blue, etc.)
+✓ Progressive complexity (lvl 1 = cute, lvl 10 = epic)
+✓ Speed: <60 seconds per generation
+✓ Cost: <$0.10 per image
+
+─────────────────────────────────────────────────────────────────────────────────
+5.1 AI MODEL SELECTION
+─────────────────────────────────────────────────────────────────────────────────
+
+PRIMARY: Flux-1-Schnell (via Replicate)
+- Speed: 2-5 seconds
+- Cost: $0.003/generation
+- Quality: High (1024x1024)
+- Style consistency: Good with proper prompting
+
+FALLBACK: SDXL-Lightning
+- Speed: 3-8 seconds
+- Cost: $0.002/generation
+- Quality: Medium-High
+
+FUTURE (Post-Hackathon): Fine-tuned LoRA
+- Train custom LoRA on element styles
+- Ensures perfect consistency
+
+─────────────────────────────────────────────────────────────────────────────────
+5.2 PROMPT ENGINEERING
+─────────────────────────────────────────────────────────────────────────────────
+
+PROMPT TEMPLATE:
+
+{base_description}, {level_descriptor}, {element_theme}, {style_modifiers}
+
+EXAMPLES:
+
+Level 1 (Hatchling) - Fire:
+"A cute baby fire elemental creature hatching from a cracked obsidian egg,
+glowing ember eyes, tiny flame wisps, warm orange and red palette,
+kawaii style, soft lighting, white background, digital art"
+
+Level 5 (Mature) - Water:
+"A majestic water spirit creature in full form, flowing aqua mane,
+crystalline scales, bioluminescent blue accents, ocean depths atmosphere,
+fantasy concept art, dramatic lighting, ethereal glow"
+
+Level 10 (Transcendent) - Earth:
+"An ancient colossal earth titan, mountain peaks as armor,
+glowing green nature runes, vines and crystals merging,
+epic fantasy art, cinematic lighting, godlike presence,
+highly detailed, 8k quality"
+
+DYNAMIC VARIABLES:
+
+FILE: backend/src/ai/prompt-generator.ts
+
+const LEVEL_DESCRIPTORS = {
+  1: { size: 'tiny', mood: 'cute', detail: 'simple' },
+  2: { size: 'small', mood: 'playful', detail: 'moderate' },
+  3: { size: 'medium', mood: 'curious', detail: 'moderate' },
+  4: { size: 'medium-large', mood: 'confident', detail: 'detailed' },
+  5: { size: 'large', mood: 'majestic', detail: 'highly detailed' },
+  6: { size: 'large', mood: 'powerful', detail: 'highly detailed' },
+  7: { size: 'very large', mood: 'wise', detail: 'intricate' },
+  8: { size: 'massive', mood: 'ancient', detail: 'intricate' },
+  9: { size: 'colossal', mood: 'mythical', detail: 'masterpiece' },
+  10: { size: 'titanic', mood: 'transcendent', detail: 'ultra detailed 8k' },
+};
+
+const ELEMENT_THEMES = {
+  0: 'fire elemental, ember glow, flame particles, warm red-orange palette',
+  1: 'water spirit, flowing liquid, splash effects, cool blue-cyan palette',
+  2: 'earth guardian, stone texture, nature growth, green-brown earthy tones',
+  3: 'air sylph, cloud wisps, wind currents, light gray-white ethereal palette',
+};
+
+export function generatePrompt(element: number, level: number, seed?: string): string {
+  const descriptor = LEVEL_DESCRIPTORS[level];
+  const theme = ELEMENT_THEMES[element];
+
+  const prompt = `
+    A ${descriptor.size} ${descriptor.mood} ${theme},
+    ${descriptor.detail}, fantasy digital art, centered composition,
+    clean white background, professional illustration
+  `.trim();
+
+  return prompt;
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+5.3 IMAGE GENERATION SERVICE
+─────────────────────────────────────────────────────────────────────────────────
+
+FILE: backend/src/services/ai-image.service.ts
+
+import Replicate from 'replicate';
+
+export class AIImageService {
+  private replicate: Replicate;
+
+  constructor() {
+    this.replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+  }
+
+  async generateEvolutionImage(
+    element: number,
+    level: number,
+    tokenId: number
+  ): Promise<string> {
+    const prompt = generatePrompt(element, level);
+    const seed = this.generateSeed(tokenId, level); // Deterministic seed
+
+    const output = await this.replicate.run(
+      'black-forest-labs/flux-schnell',
+      {
+        input: {
+          prompt,
+          num_outputs: 1,
+          aspect_ratio: '1:1',
+          output_format: 'png',
+          output_quality: 90,
+          seed,
+        },
+      }
+    );
+
+    // output is array of URLs
+    const imageUrl = output[0];
+
+    // Download and re-upload to IPFS for permanence
+    const ipfsUrl = await this.uploadToIPFS(imageUrl, tokenId, level);
+
+    return ipfsUrl;
+  }
+
+  private generateSeed(tokenId: number, level: number): number {
+    // Deterministic but unique per token+level
+    return (tokenId * 1000 + level * 100 + Date.now()) % 2147483647;
+  }
+
+  private async uploadToIPFS(url: string, tokenId: number, level: number): Promise<string> {
+    // Download image
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    // Upload to NFT.Storage
+    const client = new NFTStorage({ token: process.env.NFT_STORAGE_KEY });
+    const cid = await client.storeBlob(blob);
+
+    return `ipfs://${cid}`;
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────────
+5.4 METADATA GENERATION
+─────────────────────────────────────────────────────────────────────────────────
+
+FILE: backend/src/services/metadata.service.ts
+
+export class MetadataService {
+  async createMetadata(
+    tokenId: number,
+    element: number,
+    level: number,
+    imageUri: string,
+    evolutionCount: number
+  ): Promise<string> {
+    const metadata = {
+      name: `${ELEMENT_NAMES[element]} Soul #${tokenId} - ${FORM_NAMES[level]}`,
+      description: this.generateDescription(element, level),
+      image: imageUri,
+      attributes: [
+        { trait_type: 'Element', value: ELEMENT_NAMES[element] },
+        { trait_type: 'Level', value: level },
+        { trait_type: 'Form', value: FORM_NAMES[level] },
+        { trait_type: 'Evolution Count', value: evolutionCount },
+        { trait_type: 'Generation Method', value: 'AI-Generated' },
+        { trait_type: 'Rarity', value: this.calculateRarity(level) },
+      ],
+      external_url: `https://elementalsouls.xyz/nft/${tokenId}`,
+    };
+
+    // Upload metadata to IPFS
+    const client = new NFTStorage({ token: process.env.NFT_STORAGE_KEY });
+    const metadataBlob = new Blob([JSON.stringify(metadata)], {
+      type: 'application/json'
+    });
+    const cid = await client.storeBlob(metadataBlob);
+
+    return `ipfs://${cid}`;
+  }
+
+  private calculateRarity(level: number): string {
+    if (level <= 2) return 'Common';
+    if (level <= 5) return 'Uncommon';
+    if (level <= 7) return 'Rare';
+    if (level === 8) return 'Epic';
+    if (level === 9) return 'Legendary';
+    return 'Mythic';
+  }
+}
+
+════════════════════════════════════════════════════════════════════════════════
+6. TASK SYSTEM & GAMIFICATION
+════════════════════════════════════════════════════════════════════════════════
+
+PHILOSOPHY: Tasks should be diverse, engaging, and anti-bot
+
+─────────────────────────────────────────────────────────────────────────────────
+6.1 TASK CATEGORIES & EXAMPLES
+─────────────────────────────────────────────────────────────────────────────────
+
+SOCIAL TASKS (Community Building):
+┌────────────────────────────┬─────────┬────────────────────────────┐
+│ Task                       │ Points  │ Verification               │
+├────────────────────────────┼─────────┼────────────────────────────┤
+│ Follow Twitter             │ 10      │ Manual (screenshot)        │
+│ Retweet announcement       │ 15      │ Twitter API (optional)     │
+│ Join Discord               │ 10      │ Discord OAuth              │
+│ Share referral (3 signups) │ 50      │ On-chain tracking          │
+│ Create fan art             │ 100     │ Manual review              │
+└────────────────────────────┴─────────┴────────────────────────────┘
+
+ON-CHAIN TASKS (DeFi Engagement):
+┌────────────────────────────┬─────────┬────────────────────────────┐
+│ Task                       │ Points  │ Verification               │
+├────────────────────────────┼─────────┼────────────────────────────┤
+│ Swap on MonadSwap          │ 30      │ Event log monitoring       │
+│ Provide liquidity          │ 50      │ LP token balance check     │
+│ Bridge from Ethereum       │ 40      │ Bridge contract events     │
+│ Vote on governance         │ 25      │ Snapshot.org API           │
+│ Stake MONAD tokens         │ 60      │ Staking contract balance   │
+└────────────────────────────┴─────────┴────────────────────────────┘
+
+QUEST TASKS (Interactive):
+┌────────────────────────────┬─────────┬────────────────────────────┐
+│ Task                       │ Points  │ Verification               │
+├────────────────────────────┼─────────┼────────────────────────────┤
+│ Complete tutorial          │ 20      │ Frontend state tracking    │
+│ 7-day login streak         │ 35      │ Backend session logs       │
+│ Explore 5 dApps            │ 45      │ Contract interaction logs  │
+│ Refer 3 friends            │ 75      │ Referral code system       │
+│ Participate in event       │ 100     │ Event-specific logic       │
+└────────────────────────────┴─────────┴────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────────
+6.2 LEVEL PROGRESSION TABLE
+─────────────────────────────────────────────────────────────────────────────────
+
+┌───────┬─────────────┬─────────────┬──────────────────────────────────┐
+│ Level │ Tasks Req'd │ Total Pts   │ Unlocked Tasks                   │
+├───────┼─────────────┼─────────────┼──────────────────────────────────┤
+│ 0→1   │ 3           │ 50          │ Social basics                    │
+│ 1→2   │ 5           │ 150         │ + First DEX swap                 │
+│ 2→3   │ 7           │ 300         │ + Liquidity provision            │
+│ 3→4   │ 10          │ 500         │ + Governance participation       │
+│ 4→5   │ 12          │ 750         │ + Advanced DeFi (staking)        │
+│ 5→6   │ 15          │ 1,100       │ + Cross-chain tasks              │
+│ 6→7   │ 18          │ 1,500       │ + Community leadership           │
+│ 7→8   │ 22          │ 2,000       │ + Creator tasks (content)        │
+│ 8→9   │ 25          │ 2,700       │ + Exclusive events               │
+│ 9→10  │ 30          │ 3,500       │ + Final challenge (secret)       │
+└───────┴─────────────┴─────────────┴──────────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────────
+6.3 TASK SEEDING (SQL)
+─────────────────────────────────────────────────────────────────────────────────
+
+FILE: backend/db/seeds/tasks.sql
+
+INSERT INTO tasks (id, name, description, category, required_level, points, verification_type, is_active) VALUES
+-- Level 0 → 1 (Starter Tasks)
+('follow-twitter', 'Follow @ElementalSouls', 'Follow our Twitter account', 'social', 0, 10, 'manual', true),
+('join-discord', 'Join Discord Server', 'Join our community Discord', 'social', 0, 10, 'auto', true),
+('complete-tutorial', 'Complete Tutorial', 'Learn how to evolve your soul', 'quest', 0, 20, 'auto', true),
+
+-- Level 1 → 2
+('first-swap', 'Make Your First Swap', 'Swap any tokens on MonadSwap', 'onchain', 1, 30, 'auto', true),
+('retweet-launch', 'Retweet Launch Post', 'Share our launch announcement', 'social', 1, 15, 'manual', true),
+
+-- Level 2 → 3
+('provide-liquidity', 'Become a Liquidity Provider', 'Add liquidity to any pool', 'onchain', 2, 50, 'auto', true),
+('bridge-assets', 'Bridge from Ethereum', 'Bridge at least $10 to Monad', 'onchain', 2, 40, 'auto', true),
+
+-- Add more tasks...
+
+DYNAMIC TASK INJECTION:
+- Event-based tasks (e.g., "Participate in Halloween event")
+- Seasonal challenges
+- Partnerships (e.g., "Use Protocol X")
+
+════════════════════════════════════════════════════════════════════════════════
+7. SCALABILITY CONSIDERATIONS
+════════════════════════════════════════════════════════════════════════════════
+
+─────────────────────────────────────────────────────────────────────────────────
+7.1 SMART CONTRACT SCALABILITY
+─────────────────────────────────────────────────────────────────────────────────
+
+GAS OPTIMIZATION:
+✓ Use uint8 for level/element (vs uint256)
+✓ Pack storage variables efficiently
+✓ Minimal storage writes in evolve()
+✓ Events for off-chain indexing (vs storage reads)
+
+UPGRADE PATH (Post-Hackathon):
+┌──────────────────────────────────────────────────────────────────────┐
+│ Option 1: Proxy Pattern (UUPS)                                      │
+│ - Deploy new implementation contracts                               │
+│ - Preserve tokenIds and state                                       │
+│ - Add new elements/levels without redeployment                      │
+│                                                                      │
+│ Option 2: Modular Contracts                                         │
+│ - Separate ElementRegistry, LevelManager, TaskValidator            │
+│ - Update individual modules independently                           │
+│ - Increases complexity but flexibility                              │
+└──────────────────────────────────────────────────────────────────────┘
+
+MULTI-CHAIN EXPANSION:
+- Deploy same contract on other EVM chains (Base, Arbitrum, etc.)
+- Use LayerZero/Hyperlane for cross-chain NFT teleportation
+- Unified backend tracks all chains
+
+─────────────────────────────────────────────────────────────────────────────────
+7.2 BACKEND SCALABILITY
+─────────────────────────────────────────────────────────────────────────────────
+
+HORIZONTAL SCALING:
+┌─────────────────────────────────────────────────────────────────┐
+│ Load Balancer (Nginx/AWS ALB)                                  │
+│         ▼          ▼           ▼                                │
+│    API Node 1  API Node 2  API Node 3                          │
+│         ▼          ▼           ▼                                │
+│    Shared PostgreSQL (RDS Multi-AZ)                            │
+│    Shared Redis Cluster (ElastiCache)                          │
+└─────────────────────────────────────────────────────────────────┘
+
+JOB QUEUE ARCHITECTURE:
+┌──────────────┐      ┌─────────────┐      ┌──────────────┐
+│ API Receives │─────▶│  BullMQ     │─────▶│ Worker Pool  │
+│ Evolve Req   │      │  (Redis)    │      │ (3-5 nodes)  │
+└──────────────┘      └─────────────┘      └──────┬───────┘
+                                                   ▼
+                                           ┌──────────────┐
+                                           │ AI Service   │
+                                           │ IPFS Upload  │
+                                           │ DB Update    │
+                                           └──────────────┘
+
+CACHING STRATEGY:
+┌────────────────────────┬──────────────┬─────────────────┐
+│ Data Type              │ Cache Layer  │ TTL             │
+├────────────────────────┼──────────────┼─────────────────┤
+│ NFT metadata           │ Redis        │ 1 hour          │
+│ Task list              │ Redis        │ 5 minutes       │
+│ User profile           │ Redis        │ 10 minutes      │
+│ Evolution history      │ Postgres     │ N/A (permanent) │
+│ Available tasks        │ CDN (static) │ 1 hour          │
+└────────────────────────┴──────────────┴─────────────────┘
+
+DATABASE OPTIMIZATION:
+-- Partition evolution_history by month
+CREATE TABLE evolution_history (
+    id SERIAL,
+    token_id INTEGER,
+    evolved_at TIMESTAMP,
+    ...
+) PARTITION BY RANGE (evolved_at);
+
+-- Indexes
+CREATE INDEX CONCURRENTLY idx_tasks_level ON tasks(required_level);
+CREATE INDEX CONCURRENTLY idx_completions_user ON task_completions(user_address, status);
+
+─────────────────────────────────────────────────────────────────────────────────
+7.3 FRONTEND SCALABILITY
+─────────────────────────────────────────────────────────────────────────────────
+
+PERFORMANCE:
+✓ Next.js Image Optimization (IPFS → Vercel CDN)
+✓ React Query caching (reduce API calls)
+✓ Virtual scrolling for task lists (react-window)
+✓ Lazy load NFT images (Intersection Observer)
+✓ Static generation for landing page
+
+CDN STRATEGY:
+- IPFS images → Cloudflare IPFS gateway (faster)
+- Static assets → Vercel Edge Network
+- API calls → Direct to backend (no CDN)
+
+MOBILE OPTIMIZATION:
+- Responsive design (TailwindCSS)
+- WalletConnect for mobile wallets
+- Progressive Web App (PWA) support
+
+════════════════════════════════════════════════════════════════════════════════
+8. SECURITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+─────────────────────────────────────────────────────────────────────────────────
+8.1 SMART CONTRACT SECURITY
+─────────────────────────────────────────────────────────────────────────────────
+
+AUDIT CHECKLIST:
+☐ Reentrancy protection on evolve()
+☐ Integer overflow/underflow (Solidity 0.8+ safe)
+☐ Access control testing (only authorized roles)
+☐ Signature replay prevention (nonce + deadline)
+☐ Gas limit attacks (no unbounded loops)
+☐ Front-running mitigation (EIP-712 signatures)
+
+TESTING COVERAGE:
+- Unit tests: >95% line coverage
+- Integration tests: Full mint → evolve flow
+- Fuzz testing: Random inputs (Foundry invariants)
+- Upgrade tests: State preservation (if using proxy)
+
+TOOLS:
+✓ Slither (static analysis)
+✓ Mythril (symbolic execution)
+✓ Foundry fuzz testing
+✓ Manual audit (pre-mainnet)
+
+─────────────────────────────────────────────────────────────────────────────────
+8.2 BACKEND SECURITY
+─────────────────────────────────────────────────────────────────────────────────
+
+KEY MANAGEMENT:
+┌─────────────────────────┬──────────────────────────────────────┐
+│ Secret                  │ Storage Method                       │
+├─────────────────────────┼──────────────────────────────────────┤
+│ Signer private key      │ AWS Secrets Manager (rotated weekly) │
+│ Database password       │ Environment variable (encrypted)     │
+│ API keys (Replicate)    │ Secrets Manager                      │
+│ JWT signing key         │ Secrets Manager                      │
+└─────────────────────────┴──────────────────────────────────────┘
+
+API SECURITY:
+✓ Rate limiting (per IP + per user)
+✓ Input validation (Zod schemas)
+✓ SQL injection prevention (parameterized queries)
+✓ XSS prevention (sanitize user inputs)
+✓ CORS whitelist (frontend domain only)
+✓ HTTPS only (SSL certificates)
+
+SIGNATURE SECURITY:
+- Deadline enforcement (max 15 minutes)
+- Nonce incrementation (prevent replay)
+- Domain separator verification
+- Signature used once (mark in DB)
+
+─────────────────────────────────────────────────────────────────────────────────
+8.3 FRONTEND SECURITY
+─────────────────────────────────────────────────────────────────────────────────
+
+WALLET SECURITY:
+✓ Never request private keys
+✓ Use standard wallet connectors (RainbowKit)
+✓ Clear signature messages (readable permit data)
+✓ Transaction simulation before signing
+
+DATA VALIDATION:
+✓ Validate contract responses (Zod)
+✓ Sanitize user uploads (images)
+✓ CSP headers (Content Security Policy)
+
+════════════════════════════════════════════════════════════════════════════════
+9. DEPLOYMENT STRATEGY
+════════════════════════════════════════════════════════════════════════════════
+
+─────────────────────────────────────────────────────────────────────────────────
+9.1 SMART CONTRACT DEPLOYMENT
+─────────────────────────────────────────────────────────────────────────────────
+
+NETWORKS:
+1. Local Development: Anvil (Foundry)
+2. Testnet: Monad Testnet
+3. Mainnet: Monad Mainnet (post-hackathon)
+
+DEPLOYMENT SCRIPT:
+
+FILE: scripts/deploy.ts
+
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { monadTestnet } from './chains';
+
+async function main() {
+  const account = privateKeyToAccount(process.env.DEPLOYER_KEY);
+  const client = createWalletClient({
+    account,
+    chain: monadTestnet,
+    transport: http(),
+  });
+
+  // Deploy contract
+  const hash = await client.deployContract({
+    abi: ELEMENTAL_SOULS_ABI,
+    bytecode: BYTECODE,
+    args: [process.env.SIGNER_ADDRESS], // Initial signer
+  });
+
+  const receipt = await client.waitForTransactionReceipt({ hash });
+  const contractAddress = receipt.contractAddress;
+
+  console.log('✅ Deployed to:', contractAddress);
+
+  // Verify on block explorer
+  await verifyContract(contractAddress, [process.env.SIGNER_ADDRESS]);
+}
+
+VERIFICATION:
+forge verify-contract \
+  --chain-id <monad-chain-id> \
+  --compiler-version 0.8.24 \
+  --constructor-args $(cast abi-encode "constructor(address)" $SIGNER_ADDRESS) \
+  $CONTRACT_ADDRESS \
+  src/ElementalSouls.sol:ElementalSouls
+
+─────────────────────────────────────────────────────────────────────────────────
+9.2 BACKEND DEPLOYMENT
+─────────────────────────────────────────────────────────────────────────────────
+
+HOSTING: Railway / Render / AWS ECS
+
+ENVIRONMENT VARIABLES:
+# Contract
+CONTRACT_ADDRESS=0x...
+MONAD_RPC_URL=https://...
+SIGNER_PRIVATE_KEY=0x...
+
+# Database
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+
+# Services
+REPLICATE_API_TOKEN=r8_...
+NFT_STORAGE_KEY=eyJhbGc...
+JWT_SECRET=...
+
+# Config
+NODE_ENV=production
+PORT=3000
+
+DOCKER SETUP:
+
+FILE: backend/Dockerfile
+
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+
+DOCKER COMPOSE (for local dev):
+
+version: '3.8'
+services:
+  api:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/elemental
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: elemental
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  postgres_data:
+
+─────────────────────────────────────────────────────────────────────────────────
+9.3 FRONTEND DEPLOYMENT
+─────────────────────────────────────────────────────────────────────────────────
+
+HOSTING: Vercel (recommended for Next.js)
+
+ENVIRONMENT VARIABLES:
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+NEXT_PUBLIC_MONAD_RPC=https://...
+NEXT_PUBLIC_WALLETCONNECT_ID=...
+NEXT_PUBLIC_API_URL=https://api.elementalsouls.xyz
+
+DEPLOYMENT:
+vercel --prod
+
+CUSTOM DOMAIN:
+- Add domain in Vercel settings
+- Configure DNS: CNAME → cname.vercel-dns.com
+
+════════════════════════════════════════════════════════════════════════════════
+10. TIMELINE & MILESTONES
+════════════════════════════════════════════════════════════════════════════════
+
+HACKATHON TIMELINE (4 weeks):
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ WEEK 1: Foundation                                                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Days 1-2: Smart Contract Development                                      │
+│   ☐ Write ElementalSouls.sol                                              │
+│   ☐ Write Foundry tests (>90% coverage)                                   │
+│   ☐ Deploy to Monad testnet                                               │
+│   ☐ Verify on block explorer                                              │
+│                                                                            │
+│ Days 3-4: Backend Setup                                                   │
+│   ☐ Initialize Fastify project                                            │
+│   ☐ Setup PostgreSQL schema                                               │
+│   ☐ Implement EIP-712 signer service                                      │
+│   ☐ Create auth endpoints (SIWE)                                          │
+│                                                                            │
+│ Days 5-7: Frontend Foundation                                             │
+│   ☐ Next.js project setup                                                 │
+│   ☐ Integrate wagmi + RainbowKit                                          │
+│   ☐ Build landing page                                                    │
+│   ☐ Build mint interface                                                  │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ WEEK 2: Core Features                                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Days 8-10: Task System                                                    │
+│   ☐ Create task database schema                                           │
+│   ☐ Implement task verification logic                                     │
+│   ☐ Build task submission API                                             │
+│   ☐ Seed 20+ initial tasks                                                │
+│                                                                            │
+│ Days 11-14: Evolution Pipeline                                            │
+│   ☐ Integrate Replicate API                                               │
+│   ☐ Build prompt generation logic                                         │
+│   ☐ Implement IPFS upload service                                         │
+│   ☐ Create evolution request endpoint                                     │
+│   ☐ Test full evolve flow (task → AI → signature → blockchain)           │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ WEEK 3: Integration & Polish                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Days 15-17: Frontend Completion                                           │
+│   ☐ Build dashboard (NFT viewer + stats)                                  │
+│   ☐ Build task list UI                                                    │
+│   ☐ Build evolution interface                                             │
+│   ☐ Add loading states & animations                                       │
+│                                                                            │
+│ Days 18-21: End-to-End Testing                                            │
+│   ☐ Test full user journey (mint → tasks → evolve x3)                    │
+│   ☐ Fix bugs and edge cases                                               │
+│   ☐ Optimize gas costs                                                    │
+│   ☐ Performance testing (100+ concurrent users)                           │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ WEEK 4: Launch Preparation                                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Days 22-24: Security & Audit                                              │
+│   ☐ Run Slither + Mythril on contract                                     │
+│   ☐ Penetration testing on backend                                        │
+│   ☐ Fix critical/high severity issues                                     │
+│   ☐ Prepare security documentation                                        │
+│                                                                            │
+│ Days 25-26: Documentation & Demo                                          │
+│   ☐ Write README with setup instructions                                  │
+│   ☐ Create demo video (5 min)                                             │
+│   ☐ Prepare pitch deck                                                    │
+│   ☐ Deploy to production                                                  │
+│                                                                            │
+│ Days 27-28: Buffer & Submission                                           │
+│   ☐ Final testing on production                                           │
+│   ☐ Submit to hackathon                                                   │
+│   ☐ Announce on social media                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────────
+DELIVERABLES CHECKLIST
+─────────────────────────────────────────────────────────────────────────────────
+
+SMART CONTRACT:
+☐ ElementalSouls.sol (audited, verified)
+☐ Foundry test suite (>90% coverage)
+☐ Deployment scripts
+☐ Contract interaction documentation
+
+BACKEND:
+☐ Fastify API server (Dockerized)
+☐ PostgreSQL database (with seed data)
+☐ EIP-712 signer service
+☐ Task verification system
+☐ AI image generation pipeline
+☐ IPFS upload service
+☐ API documentation (Swagger)
+
+FRONTEND:
+☐ Next.js web app (Vercel deployed)
+☐ Landing page
+☐ Mint interface
+☐ Dashboard
+☐ Task system UI
+☐ Evolution interface
+☐ Mobile responsive
+
+DOCUMENTATION:
+☐ README.md (setup + usage)
+☐ ARCHITECTURE.md (system design)
+☐ API.md (endpoint docs)
+☐ SECURITY.md (audit report)
+☐ Demo video (YouTube)
+
+EXTRAS (Nice to Have):
+☐ Discord bot (NFT notifications)
+☐ Analytics dashboard (admin panel)
+☐ Leaderboard (top evolvers)
+☐ Referral system
+☐ Community voting (next elements)
+
+════════════════════════════════════════════════════════════════════════════════
+POST-HACKATHON ROADMAP
+════════════════════════════════════════════════════════════════════════════════
+
+PHASE 1 (Month 1-2):
+- Audit smart contract (CertiK/OpenZeppelin)
+- Deploy to Monad mainnet
+- Launch with 10,000 mints
+- Add 50+ more tasks
+
+PHASE 2 (Month 3-4):
+- Introduce rare elements (Light, Shadow, Aether)
+- Add PvP battles (rock-paper-scissors element mechanics)
+- Staking rewards (earn tokens by holding max level NFTs)
+
+PHASE 3 (Month 5-6):
+- Cross-chain expansion (Base, Arbitrum)
+- NFT marketplace integration
+- DAO governance (community votes on new features)
+
+PHASE 4 (Month 7+):
+- Mobile app (React Native)
+- AR integration (view your soul in real world)
+- Metaverse integration (use NFTs as avatars)
+
+════════════════════════════════════════════════════════════════════════════════
+ADDITIONAL RESOURCES
+════════════════════════════════════════════════════════════════════════════════
+
+MONAD RESOURCES:
+- Docs: https://docs.monad.xyz
+- Testnet faucet: https://faucet.monad.xyz
+- RPC endpoint: <from official docs>
+- Block explorer: <from official docs>
+
+DEVELOPMENT TOOLS:
+- Foundry: https://book.getfoundry.sh
+- wagmi: https://wagmi.sh
+- Replicate: https://replicate.com/docs
+- NFT.Storage: https://nft.storage/docs
+- Viem: https://viem.sh
+
+DESIGN INSPIRATION:
+- Axie Infinity (evolution mechanics)
+- Loot (composability)
+- POAP (soulbound utility)
+- Habitica (gamified tasks)
+
+════════════════════════════════════════════════════════════════════════════════
+END OF SPECIFICATION
+════════════════════════════════════════════════════════════════════════════════
+
+VERSION HISTORY:
+v1.0 (2025-10-04) - Initial draft
+v2.0 (2025-10-04) - Revised with scalability + detailed implementations
+
+This specification is living document. Update as project evolves.
+
+For questions or clarifications, contact: <your-contact>

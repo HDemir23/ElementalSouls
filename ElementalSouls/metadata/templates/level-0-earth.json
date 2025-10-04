@@ -1,0 +1,36 @@
+{
+  "name": "Elemental Soul #{{tokenId}} - Earth Seed",
+  "description": "An ancient stone seed, covered in moss and etched with runes. This grounded essence waits to sprout. Complete tasks to help it grow into its next form.",
+  "image": "ipfs://bafybeia3bwsbtdyaarklxejnp5jvx2kbthokfhdzwcquerrjysgg6zxq7a",
+  "external_url": "https://elementalsouls.xyz/soul/{{tokenId}}",
+  "background_color": "8B4513",
+  "attributes": [
+    {
+      "trait_type": "Element",
+      "value": "Earth"
+    },
+    {
+      "trait_type": "Level",
+      "value": 0,
+      "display_type": "number",
+      "max_value": 10
+    },
+    {
+      "trait_type": "Stage",
+      "value": "Seed"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Power",
+      "value": 10,
+      "display_type": "boost_number"
+    },
+    {
+      "trait_type": "Generation",
+      "value": "Genesis"
+    }
+  ]
+}

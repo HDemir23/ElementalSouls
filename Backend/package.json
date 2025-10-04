@@ -1,0 +1,66 @@
+{
+  "name": "elemental-souls-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Elemental Souls NFT Evolution Platform",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "migrate": "node -r tsx/cjs src/db/migrate.ts",
+    "seed": "node -r tsx/cjs src/db/seed.ts",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": [
+    "nft",
+    "web3",
+    "monad",
+    "ai",
+    "evolution"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/jwt": "^8.0.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^3.0.0",
+    "@prisma/client": "^5.8.0",
+    "axios": "^1.6.7",
+    "bullmq": "^5.60.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.26.2",
+    "ioredis": "^5.3.2",
+    "mongodb": "^6.3.0",
+    "nft.storage": "^7.1.1",
+    "pg": "^8.11.3",
+    "pino": "^8.19.0",
+    "pino-pretty": "^11.0.0",
+    "replicate": "^0.32.1",
+    "siwe": "^2.3.2",
+    "viem": "^2.9.16",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/pg": "^8.11.2",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "prisma": "^5.8.0",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.3",
+    "vitest": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

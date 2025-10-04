@@ -1,0 +1,42 @@
+{
+  "name": "Elemental Soul #{{tokenId}} - Fire Hatchling",
+  "description": "The egg has cracked, revealing a flickering flame sprite. Its first evolution marks the beginning of a powerful journey. Unique AI-generated form.",
+  "image": "ipfs://{{imageCID}}/fire-level-1-{{tokenId}}.png",
+  "animation_url": "ipfs://{{animationCID}}/fire-level-1-{{tokenId}}.mp4",
+  "external_url": "https://elementalsouls.xyz/soul/{{tokenId}}",
+  "background_color": "FF6347",
+  "attributes": [
+    {
+      "trait_type": "Element",
+      "value": "Fire"
+    },
+    {
+      "trait_type": "Level",
+      "value": 1,
+      "display_type": "number",
+      "max_value": 10
+    },
+    {
+      "trait_type": "Stage",
+      "value": "Hatchling"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Power",
+      "value": 25,
+      "display_type": "boost_number"
+    },
+    {
+      "trait_type": "Evolution Count",
+      "value": 1,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Uniqueness",
+      "value": "AI Generated"
+    }
+  ]
+}

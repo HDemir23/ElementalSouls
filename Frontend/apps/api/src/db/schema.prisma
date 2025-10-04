@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum IdempotencyStatus {
+  IN_FLIGHT
+  COMPLETED
+  FAILED
+}
+
+model ImageJob {
+  id          String    @id @default(cuid())
+  jobId       String    @unique
+  wallet      String
+  element     String
+  mode        String
+  toLevel     Int
+  status      JobStatus @default(QUEUED)
+  imageCid    String?
+  prompt      String?
+  error       String?
+  resultJson  Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model IdempotencyKey {
+  id           String             @id @default(cuid())
+  key          String             @unique
+  requestHash  String
+  status       IdempotencyStatus  @default(IN_FLIGHT)
+  response     Json?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model TokenSnapshot {
+  tokenId    BigInt   @id
+  owner      String
+  level      Int
+  element    String
+  uri        String
+  imageCid   String?
+  attributes Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([owner])
+}
+
+model MetadataDraft {
+  uri        String   @id
+  element    String
+  level      Int
+  imageCid   String
+  attributes Json?
+  createdAt  DateTime @default(now())
+}
